@@ -921,7 +921,7 @@ function failOne(){ let best=null, bd=-1; for(const p of people){ if(p.m!==DECM|
   toast("구조 실패 · "+fails+"명째"); }
 // start over from the very beginning: the empty grid, the circle, the car
 function restart(){ if(!ready) return; const go=()=>{
-    lettersReset(); failsA=0; fails=0; people.forEach(p=>{ p.saved=false; p.board=false; p.failed=false; p.doomed=false; p.due=0; p.claim=null; p.g.visible=true; p.g.scale.setScalar(.72); p.g.position.y=0; p.g.userData.body.forEach(o=>o.visible=true); p.g.userData.ring.material=ringMat; });
+    lettersReset(); failsA=0; fails=0; people.forEach(p=>{ p.saved=false; p.board=false; p.failed=false; p.sink=0; p.splash=0; p.doomed=false; p.due=0; p.claim=null; p.g.visible=true; p.g.scale.setScalar(.72); p.g.position.y=0; p.g.userData.body.forEach(o=>o.visible=true); p.g.userData.ring.material=ringMat; });
     me.x=0; me.z=0; me.h=H0; me.v=0; seasonK=0; setSeason(0); fleet.forEach(f=>{ f.state=0; f.c.visible=false; }); sinkRoad(roadA); sinkRoad(roadB); chevs.forEach(g=>g.visible=false); beacon.visible=false;
     banner(null); $("#alert").classList.remove("on"); $("#quest").classList.remove("on"); $("#arrow").hidden=true; document.body.classList.remove("live");
     phase=0; tPhase=0; moved=0; tick.t0=0; tick.hold=0; running=false; revHold=false; revOn=true; revT=0; popT=0; revU.uRevR.value=0; grid.visible=ring.visible=true; setArc(1); scene.background.copy(DARK); glows.forEach(g=>g.visible=true);
@@ -990,11 +990,11 @@ function tick(){
   // phase logic
   if(phase===0&&running&&tick.t0&&(t-tick.t0>6&&moved>30||t-tick.t0>12)) setPhase(1); if(phase===0&&running&&!tick.t0) tick.t0=t;
   if(phase===1&&Math.abs(ms-I1)<4.6&&Math.abs(ml)<2.9) setPhase(2);        // park inside the marked bay
-  if(phase===2&&tPhase>2.5&&!people.some(p=>p.m===AUG&&!p.saved&&!p.doomed)&&!fleet.some(f=>f.state===1)) { if(!tick.hold){ tick.hold=t; for(const p of people){ if(p.m===AUG&&p.doomed&&!p.failed){ p.failed=true; p.g.userData.body.forEach(o=>o.visible=false); p.g.userData.ring.material=failMat; failsA++; } } } if(t-tick.hold>2.2){ tick.hold=0; setPhase(3); } }
+  if(phase===2&&tPhase>2.5&&!people.some(p=>p.m===AUG&&!p.saved&&!p.doomed)&&!fleet.some(f=>f.state===1)) { if(!tick.hold){ tick.hold=t; for(const p of people){ if(p.m===AUG&&p.doomed&&!p.failed){ p.failed=true; p.sink=t+.2+Math.random()*1.4; p.splash=0; failsA++; } } } if(t-tick.hold>3.6){ tick.hold=0; setPhase(3); } }
   if((phase>=4||revHold&&jOut.done)&&seasonK<1){ seasonK=Math.min(1,seasonK+dt/3.5); setSeason(seasonK); if(revOn){ const k=revHold?0:Math.min(1,revT/1.9); mixc(_sky,PAL.sky,seasonK); scene.background.copy(DARK).lerp(_sky,k*k); } }
   const hours = phase>=4 ? Math.min(FOUND[DECM],Math.max(0,(ms-B0)/HU)) : phase>=1 ? Math.min(FOUND[AUG],Math.max(0,(ms-A0)/HU)) : 0;
   if(phase===4){ if(Math.abs(ms-I2)<4.6&&Math.abs(ml)<2.9) setPhase(5); }
-  if(phase===5&&tPhase>2.5&&!people.some(p=>p.m===DECM&&!p.saved&&!p.failed&&!p.doomed)&&!fleet.some(f=>f.state===1)) { if(!tick.hold){ tick.hold=t; for(const p of people){ if(p.m===DECM&&p.doomed&&!p.failed){ p.failed=true; p.g.userData.body.forEach(o=>o.visible=false); p.g.userData.ring.material=failMat; fails++; } } } if(t-tick.hold>2.2){ tick.hold=0; setPhase(6); } }
+  if(phase===5&&tPhase>2.5&&!people.some(p=>p.m===DECM&&!p.saved&&!p.failed&&!p.doomed)&&!fleet.some(f=>f.state===1)) { if(!tick.hold){ tick.hold=t; for(const p of people){ if(p.m===DECM&&p.doomed&&!p.failed){ p.failed=true; p.sink=t+.2+Math.random()*1.4; p.splash=0; fails++; } } } if(t-tick.hold>3.6){ tick.hold=0; setPhase(6); } }
   // rescue helicopters: they come down out of the sky, hover over each person, winch them up, and climb away when nobody is left
   fleet.forEach((f,i)=>{
     if(!f.state) return; if(t<f.t0) return; f.c.visible=true; const HOV=7.6; let sp=0;
@@ -1006,7 +1006,9 @@ function tick(){
         if(d<.9&&f.y<LAND+.5){ f.hold+=dt; if(f.hold>.45&&!f.tp.saved){ f.tp.saved=true; f.tp.board=true; } if(f.hold>.95){ f.tp=null; f.hold=0; f.ax=null; } } else if(!f.tp.saved) f.hold=0;
         if(f.y<12&&Math.random()<dt*2.2&&floorAt(f.x,f.z)<0) fxPuff(f.x+(Math.random()-.5)*5,f.z+(Math.random()-.5)*5,(Math.random()-.5)*5,(Math.random()-.5)*5,Math.random()*6,1,1,2.6,.22);     // rotor wash
       } else { f.state=2; f.hold=0; }
-    } else { sp=9; f.y+=dt*(5+(f.y-HOV)*.9); f.x+=Math.sin(f.h)*sp*dt; f.z+=Math.cos(f.h)*sp*dt; if(f.y>52){ f.state=0; f.c.visible=false; return; } }
+    } else { f.hold+=dt; const up=Math.min(1,f.hold/1.2);      // lifts off, then banks away over the far side and leaves the screen
+      f.y+=dt*(4+up*9); sp=up*up*(8+f.y*.55); let dh=Math.atan2(-Lv.x+D.x*(i%2?.9:-.5),-Lv.z+D.z*(i%2?.9:-.5))-f.h; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); f.h+=dh*Math.min(1,dt*1.8);
+      f.x+=Math.sin(f.h)*sp*dt; f.z+=Math.cos(f.h)*sp*dt; if(f.y>60){ f.state=0; f.c.visible=false; return; } }
     f.c.position.set(f.x,f.y+Math.sin(t*2.3+i)*.18,f.z); f.c.rotation.order="YXZ"; f.c.rotation.set(Math.min(.22,sp*.013),f.h,Math.sin(t*1.7+i)*.03);
     if(f.rotor) f.rotor.rotation.y+=dt*26; if(f.tail) f.tail.rotation.x+=dt*40; if(f.blink) f.blink.material.opacity=Math.floor(t*3+i)%2?.95:.15;
     f.rope.visible=false;
@@ -1016,6 +1018,9 @@ function tick(){
     if(!p.g.visible) continue;
     if(p.saved){ if(p.board){ p.g.scale.multiplyScalar(Math.max(0,1-dt*9)); p.g.position.y+=dt*2.5; if(p.g.scale.x<.05) p.g.visible=false; }      // taken aboard: gone from the water
       else { p.g.position.y+=dt*9; p.g.scale.multiplyScalar(1-dt*2.5); if(p.g.position.y>9) p.g.visible=false; } continue; }
+    // the ones nobody reached go under: a splash, the arms still up, then the water closes over them
+    if(p.failed&&p.sink&&t>=p.sink){ const u=t-p.sink, x=p.g.position.x, z=p.g.position.z; if(p.splash<1){ p.splash=1; fxDrops(x,z,7,3.4,0,0); fxRing(x,z,.5,2.6,.8,.5); } if(p.splash<2&&u>.55){ p.splash=2; fxRing(x,z,.3,1.9,.9,.4); fxDrops(x,z,3,1.6,0,0); }
+      p.g.position.y=-u*u*1.9-u*.25; p.g.rotation.z=Math.sin(t*9+p.ph)*.12*Math.max(0,1-u); const ar=p.g.userData.arms; ar[0].rotation.z=-.5+Math.sin(t*13+p.ph)*.5; ar[1].rotation.z=.5-Math.sin(t*13+p.ph+1)*.5; if(p.g.position.y<-2.6){ p.g.visible=false; p.sink=0; } continue; }
     p.g.position.y=Math.sin(t*2+p.ph)*.18; p.g.rotation.z=Math.sin(t*1.6+p.ph)*.06; if(p.failed) continue;
     const ar=p.g.userData.arms; ar[0].rotation.z=-.5+Math.sin(t*7+p.ph)*.5; ar[1].rotation.z=.5-Math.sin(t*7+p.ph+1)*.5;
     if(p.due&&t>=p.due) p.saved=true;
