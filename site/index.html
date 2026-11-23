@@ -912,7 +912,7 @@ function jScrub(){ const j=$("#journal"); if(j.hidden) return; const vh=j.client
     if(e.classList.contains("bars")||e.classList.contains("dots")){ if(seen) e.classList.add("go"); else if(gone) e.classList.remove("go"); } }); }
 function closeJournal(then){ $("#jSubj").classList.remove("on"); const j=$("#journal"); j.style.opacity=0; setTimeout(()=>{ j.hidden=true; j.style.opacity=1; j.style.setProperty("--k",0); const d=$("#jDoc"); if(d) $("#docHold").append(d); if(then) then(); },500); }
 function setPhase(p){ phase=p; tPhase=0;
-  if(p===1){ $("#intro").hidden=true; revT=0; document.body.classList.add("live"); sinkRoad(roadB); riseRoad(roadA,clock.elapsedTime+.5); setChevs(PLZ.hs-13); if(tAug){ tAug.visible=true; tDec.visible=false; } banner("익수사고 발생!!","8월 · 바다에 사람들이 빠졌습니다. 길을 따라 달리세요."); }
+  if(p===1){ $("#intro").hidden=true; revT=0; document.body.classList.add("live"); sinkRoad(roadB); riseRoad(roadA,clock.elapsedTime+.5); setChevs(PLZ.hs-13); if(tAug){ tAug.visible=true; tDec.visible=false; } banner("익수사고 발생!!","8월 · 길을 따라 달리세요."); }
   if(p===2){ chevs.forEach(g=>g.visible=false); banner(null); $("#alert").classList.remove("on"); spawnFleet(HELI[AUG],AUG,I1); toast("구조 시작"); }
   if(p===3) journal(AUG);
   if(p===4){ sinkRoad(roadA); riseRoad(roadB,clock.elapsedTime+.9); setChevs(PLZ.hs-13); if(tAug){ tAug.visible=false; tDec.visible=true; } people.forEach(q=>{ if(q.m===AUG) q.g.visible=false; }); banner("익수사고 발생!!","12월 · 겨울입니다."); }
