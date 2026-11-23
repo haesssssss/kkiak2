@@ -791,7 +791,7 @@ const lampL=[0,1,2].map(()=>{ const L=new THREE.PointLight(0xffb060,0,17,1.4); L
 function lampLights(dt){ if(!tick.lampC) tick.lampC=lamps.map(g=>{ g.updateWorldMatrix(true,false); const v=new THREE.Vector3().setFromMatrixPosition(g.matrixWorld); return {g,x:v.x,z:v.z}; });
   if((lampTick++%5)===0){ const near=[]; for(const c of tick.lampC){ if(c.g.parent&&c.g.parent.visible===false) continue; const d=Math.hypot(c.x-me.x,c.z-me.z); if(d<26) near.push([d,c]); } near.sort((a,b)=>a[0]-b[0]); lampL.forEach((L,i)=>{ L.userData.tg=near[i]?near[i][1]:null; }); }
   for(const L of lampL){ const c=L.userData.tg; if(c&&(L.userData.cur!==c)){ if(L.intensity<.06){ L.userData.cur=c; L.position.set(c.x,3.3,c.z); } else { L.intensity=Math.max(0,L.intensity-dt*5); continue; } } const want=c?1.25+nightK*.5:0; L.intensity+=(want-L.intensity)*Math.min(1,dt*5); } }
-const MORE_SUBJ=[null,["여름 익수자","는"],["겨울 익수자","는"],["겨울 익수자","를"],["겨울 익수자","의"],["겨울 익수자","에게"],null,null,null];
+const MORE_SUBJ=[null,["여름 익수자","는"],["겨울 익수자","는"],["겨울 익수자","를"],["겨울 익수자","의"],["겨울 익수자","에게"],null,null];
 let steerVis=0, steerIn=0, spin=0, wet=0, jOut={aug:false,moved:false,done:false};
 // a tall red beam over the scene of the accident, so the destination reads from far away
 const beacon=new THREE.Group(); { const BW=8.4, BD=4.6, red=0xff4a3e, mk=(w,h,d,op)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:red,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
@@ -879,7 +879,6 @@ function journal(m){
       // efforts
       step(`<div class="lab rv">노력은 있었습니다</div><div class="hero rv" style="--i:1">${num(1999,"년")}</div><p class="rv" style="--i:2">소방청은 이 해부터 매년 가장 추운 때에 동계 수난구조 전문훈련을 합니다. 영하 20℃, 수온 2℃의 강에서 얼음 밑을 수색합니다. 2022년이 37기였습니다.</p><p class="src rv" style="--i:3">소방청 중앙119구조본부 보도자료, 2022.1.24</p>`),
       // but the number has not moved
-      step(`<div class="lab rv">그런데 숫자는</div><p class="say rv" style="--i:1">50%.<br><span class="bad">36%.</span></p><p class="rv" style="--i:2">겨울 사고에서 끝내 찾지 못한 비율입니다. 앞은 2012~2017년(8건 중 4건), 뒤는 2018~2023년(11건 중 4건)입니다. 지금도 셋 중 한 명은 찾지 못합니다.</p>`),
       // close
       step(`<p class="say rv">구조대는<br>신고가 온 곳으로 갑니다.</p><p class="say bad rv" style="--i:1">겨울 물가에는<br>신고할 사람이 없습니다.</p><p class="src rv" style="--i:2">자료 · 소방청 구조활동현황(2025), 소방청 수난사고 실종자 24시간 이내 미발견 구조 현황(2012~2023.6, 투신 분류 제외), 한국항해항만학회지(2023), 소방청 보도자료(2022)</p>`)
     ); }
