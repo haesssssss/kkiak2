@@ -791,7 +791,7 @@ const lampL=[0,1,2].map(()=>{ const L=new THREE.PointLight(0xffb060,0,17,1.4); L
 function lampLights(dt){ if(!tick.lampC) tick.lampC=lamps.map(g=>{ g.updateWorldMatrix(true,false); const v=new THREE.Vector3().setFromMatrixPosition(g.matrixWorld); return {g,x:v.x,z:v.z}; });
   if((lampTick++%5)===0){ const near=[]; for(const c of tick.lampC){ if(c.g.parent&&c.g.parent.visible===false) continue; const d=Math.hypot(c.x-me.x,c.z-me.z); if(d<26) near.push([d,c]); } near.sort((a,b)=>a[0]-b[0]); lampL.forEach((L,i)=>{ L.userData.tg=near[i]?near[i][1]:null; }); }
   for(const L of lampL){ const c=L.userData.tg; if(c&&(L.userData.cur!==c)){ if(L.intensity<.06){ L.userData.cur=c; L.position.set(c.x,3.3,c.z); } else { L.intensity=Math.max(0,L.intensity-dt*5); continue; } } const want=c?1.25+nightK*.5:0; L.intensity+=(want-L.intensity)*Math.min(1,dt*5); } }
-const MORE_SUBJ=[null,["여름 익수자","는"],["겨울 익수자","는"],["겨울 익수자","를"],["겨울 익수자","는"],["겨울 익수자","에게"],null,null,null];
+const MORE_SUBJ=[null,["여름 익수자","는"],["겨울 익수자","는"],["겨울 익수자","를"],["겨울 익수자","의"],["겨울 익수자","에게"],null,null,null];
 let steerVis=0, steerIn=0, spin=0, wet=0, jOut={aug:false,moved:false,done:false};
 // a tall red beam over the scene of the accident, so the destination reads from far away
 const beacon=new THREE.Group(); { const BW=8.4, BD=4.6, red=0xff4a3e, mk=(w,h,d,op)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:red,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false}));
@@ -873,7 +873,7 @@ function journal(m){
       // nobody saw
       step(`<div class="lab rv">본 사람이 없었습니다</div><p class="say rv" style="--i:1">원인을 모른다는 건,<br>물에 들어가는 순간을<br>아무도 보지 못했다는 뜻입니다.</p><p class="rv" style="--i:2">겨울 기록 중에는 수색을 시작한 위치가 <b>‘휴대전화 기지국 값’</b>으로 적힌 것도 있습니다. 어디서 빠졌는지조차 전화기가 알려준 겁니다.</p><p class="src rv" style="--i:3">‘아무도 보지 못했다’는 원인 칸이 비어 있다는 사실에서 읽은 해석입니다.</p>`),
       // so they are not found
-      step(`<div class="lab rv">끝내 찾지 못합니다</div><div class="hero bad rv" style="--i:1">${num(42,"%")}</div><p class="rv" style="--i:2">겨울 사고 19건 중 8건. 여름은 84건 중 15건, 18%입니다.</p>${b2("겨울",42,"여름",18,42,"%")}`),
+      step(`<div class="hero bad rv">${num(42,"%")}</div><div class="lab rv" style="--i:1">를 끝내 찾지 못합니다</div><p class="rv" style="--i:2">겨울 사고 19건 중 8건. 여름은 84건 중 15건, 18%입니다.</p>${b2("겨울",42,"여름",18,42,"%")}`),
       // cold water leaves no time
       step(`<div class="lab rv">남은 시간은</div><div class="hero bad rv" style="--i:1">${num(1.5,"시간",1)}</div><p class="rv" style="--i:2">수온 0~5℃의 물에서 절반이 버티는 시간입니다. 20~25℃에서는 24.5시간입니다. 늦게 알면, 구조는 수색이 됩니다.</p>${b2("0~5℃",1.5,"20~25℃",24.5,24.5,"시간")}<p class="src rv" style="--i:4">해양수색구조 의사결정지원을 위한 익수자 생존시간 고찰, 한국항해항만학회지 2023</p>`),
       // efforts
