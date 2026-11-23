@@ -762,7 +762,8 @@ function fxStep(dt){ for(const p of FX.puffs){ if(!p.m.visible) continue; p.t+=d
   for(const r of FX.rings){ if(!r.m.visible) continue; r.t+=dt; const k=r.t/r.life; if(k>=1){ r.m.visible=false; continue; } r.m.scale.setScalar(r.s0+(r.s1-r.s0)*(1-(1-k)*(1-k))); r.m.material.opacity=r.op*(1-k); }
   for(const d of FX.drops){ if(!d.m.visible) continue; d.t+=dt; d.vy-=22*dt; d.m.position.x+=d.vx*dt; d.m.position.y+=d.vy*dt; d.m.position.z+=d.vz*dt; if(d.m.position.y<-.1){ d.m.visible=false; } } }
 /* ---------- letters are loose objects: hit one with the car and it flies, tumbles, bounces, and ends up bobbing in the water ---------- */
-function floorAt(x,z){ const [s,l]=SL(x,z); if(Math.abs(s)<=PLZ.hs+2&&l>=-40&&l<=PLZ.hl+2.5) return GY; if(Math.abs(l)<3.2&&s>0&&(s<I1&&roadA.up||s<I2&&roadB.up)) return GY; for(const [c,r] of ISL){ if(Math.hypot(s-c,l)<r) return GY; } return -.25; }
+const roadOn=(rd,s)=>rd.up||rd.t0>=0&&(clock.elapsedTime-rd.t0-Math.max(0,Math.floor((s-rd.s0)/rd.cl))*.085)>.7;
+function floorAt(x,z){ const [s,l]=SL(x,z); if(Math.abs(s)<=PLZ.hs+2&&l>=-40&&l<=PLZ.hl+2.5) return GY; if(Math.abs(l)<3.2&&s>0&&(s<I1&&roadOn(roadA,s)||s<I2&&roadOn(roadB,s))) return GY; for(const [c,r] of ISL){ if(Math.hypot(s-c,l)<r) return GY; } return -.25; }
 function knock(L,ix,iz,pow){ if(!L.loose){ L.loose=true; scene.attach(L.m); } const a=Math.random()*6.283, il=Math.hypot(ix,iz)||1, w=Math.min(9,2.5+pow*.5); L.vx=ix*pow*1.2+Math.cos(a)*.8; L.vz=iz*pow*1.2+Math.sin(a)*.8; L.vy=2.2+Math.random()*1.6+pow*.2; L.wx=iz/il*w+(Math.random()-.5)*2; L.wz=-ix/il*w+(Math.random()-.5)*2; L.wy=(Math.random()-.5)*3; L.rest=0; }   // thrown the way it was hit, tumbling over that way, on a low arc
 function lettersStep(dt,t){ const fx=Math.sin(me.h), fz=Math.cos(me.h), dir=Math.sign(me.v)||1, nx=me.x+fx*2.7*dir, nz=me.z+fz*2.7*dir, sp=Math.abs(me.v);
   for(const L of LETTERS){ if(!L.grp.visible&&!L.loose) continue;
@@ -770,11 +771,16 @@ function lettersStep(dt,t){ const fx=Math.sin(me.h), fz=Math.cos(me.h), dir=Math
     const px=L.loose?L.m.position.x:L.wp[0], pz=L.loose?L.m.position.z:L.wp[1], d=Math.hypot(px-nx,pz-nz), R=.9+L.size*.42;
     if(d<R&&sp>2.5&&(!L.loose||L.rest>.25)){ const ux=(px-me.x), uz=(pz-me.z), ul=Math.hypot(ux,uz)||1; knock(L,(ux/ul)*.6+fx*dir*.6,(uz/ul)*.6+fz*dir*.6,5+sp*.55); if(L.m.position.y<.2) fxDrops(px,pz,4,4,0,0); }
     if(!L.loose) continue; const m=L.m; L.rest+=dt;
-    L.vy-=58*dt; m.position.x+=L.vx*dt; m.position.y+=L.vy*dt; m.position.z+=L.vz*dt; m.rotation.x+=L.wx*dt; m.rotation.y+=L.wy*dt; m.rotation.z+=L.wz*dt;
-    const fl=floorAt(m.position.x,m.position.z), water=fl<0, rest=fl+(water?-.1:.12*L.size);
-    if(m.position.y<rest){ m.position.y=rest;
-      if(water){ if(L.vy<-5) { fxDrops(m.position.x,m.position.z,5,2.5-L.vy*.15,0,0); fxRing(m.position.x,m.position.z,.8,2.6,.7,.45); } L.vy=Math.abs(L.vy)<3?0:-L.vy*.18; const k=Math.pow(.12,dt); L.vx*=k; L.vz*=k; L.wx*=k; L.wy*=k; L.wz*=k; m.position.y=rest+Math.sin(t*2+L.hx)*.06; }
-      else { const hit=L.vy<-4; L.vy=Math.abs(L.vy)<4?0:-L.vy*.26; const k=hit?.6:Math.pow(.004,dt); L.vx*=k; L.vz*=k; L.wx*=hit?.5:Math.pow(.01,dt); L.wy*=.6; L.wz*=hit?.5:Math.pow(.01,dt); } }
+    L.vy-=46*dt; m.position.x+=L.vx*dt; m.position.y+=L.vy*dt; m.position.z+=L.vz*dt; m.rotation.x+=L.wx*dt; m.rotation.y+=L.wy*dt; m.rotation.z+=L.wz*dt;
+    const fl=floorAt(m.position.x,m.position.z), water=fl<0, sc=m.scale.x; let low=1e9; m.updateMatrix();
+    { const e=m.matrix.elements; for(let c=0;c<8;c++){ const lx=(c&1?.8:0), ly=(c&2?.82:0), lz=(c&4?.32:0), y=e[1]*lx+e[5]*ly+e[9]*lz; if(y<low) low=y; } }      // lowest corner of the letter's box, relative to its origin
+    const lvl=water?-.42*Math.min(1,sc*.2):fl;
+    if(m.position.y+low<lvl){ m.position.y=lvl-low; const hit=L.vy<-5;
+      if(water){ if(L.vy<-6){ fxDrops(m.position.x,m.position.z,5,2.5-L.vy*.1,0,0); fxRing(m.position.x,m.position.z,.8,2.6,.7,.45); } L.vy=L.vy<-6?-L.vy*.12:0; const k=Math.pow(.1,dt); L.vx*=k; L.vz*=k; }
+      else { L.vy=hit?-L.vy*.22:0; const k=hit?.55:Math.pow(.002,dt); L.vx*=k; L.vz*=k; }
+      // on the ground it stops spinning freely and falls over onto its face or its back
+      const k2=hit?.45:Math.pow(.02,dt); L.wx*=k2; L.wy*=k2; L.wz*=k2; const q=Math.PI/2, tx=(Math.round((m.rotation.x-q)/Math.PI)*Math.PI)+q, ty=Math.round(m.rotation.y/Math.PI)*Math.PI, g=Math.min(1,dt*7);
+      m.rotation.x+=(tx-m.rotation.x)*g; m.rotation.y+=(ty-m.rotation.y)*g; if(water) m.position.y+=Math.sin(t*2+L.hx)*.012; }
     // a flying letter takes the standing ones it hits with it
     { const sv=Math.hypot(L.vx,L.vz); if(sv>5) for(const O of LETTERS){ if(O===L||O.loose||!O.grp.visible||!O.wp) continue; const dx=O.wp[0]-m.position.x, dz=O.wp[1]-m.position.z, dd=Math.hypot(dx,dz); if(dd<(L.size+O.size)*.3&&m.position.y<O.size*1.1){ knock(O,(dx/(dd||1))*.5+L.vx/sv*.5,(dz/(dd||1))*.5+L.vz/sv*.5,sv*.55); L.vx*=.5; L.vz*=.5; } } } } }
 function lettersReset(){ for(const L of LETTERS){ if(!L.loose) continue; L.loose=false; L.par.add(L.m); L.m.position.set(L.hx,0,0); L.m.rotation.set(0,0,0); L.m.scale.set(1,1,1); L.vx=L.vy=L.vz=0; } }
@@ -960,7 +966,7 @@ function tick(){
     moved+=Math.hypot(me.x-px,me.z-pz);
   }
   const [ms,ml]=SL(me.x,me.z);
-  { let gy=-.42; if(Math.abs(ms)<=PLZ.hs+2&&ml>=-PLZ.hl-1&&ml<=PLZ.hl+2.5) gy=GY; else if(Math.abs(ml)<3.3&&ms>0&&(ms<I1&&roadA.up||ms<I2&&roadB.up)) gy=GY; else for(const [c,r] of ISL){ if(Math.hypot(ms-c,ml)<r){ gy=GY; break; } } const inW=gy<0, sp=Math.abs(me.v), fx=Math.sin(me.h), fz=Math.cos(me.h);
+  { let gy=-.42; if(Math.abs(ms)<=PLZ.hs+2&&ml>=-PLZ.hl-1&&ml<=PLZ.hl+2.5) gy=GY; else if(Math.abs(ml)<4.05&&ms>0&&(ms<I1+2&&roadOn(roadA,ms)||ms<I2+2&&roadOn(roadB,ms))) gy=GY; else for(const [c,r] of ISL){ if(Math.hypot(ms-c,ml)<r){ gy=GY; break; } } const inW=gy<0, sp=Math.abs(me.v), fx=Math.sin(me.h), fz=Math.cos(me.h);
     if(inW&&!FX.wet&&(phase>0)){ fxRing(me.x+fx*1.5,me.z+fz*1.5,1.4,5.5,.9,.55); for(let i=0;i<10;i++){ const a=i/10*6.283; fxPuff(me.x+Math.cos(a)*1.8,me.z+Math.sin(a)*1.8,Math.cos(a)*4,Math.sin(a)*4,Math.atan2(Math.cos(a),Math.sin(a)),1.1,1.2,2.8,.6); } fxDrops(me.x+fx*2,me.z+fz*2,22,5+sp*.25,fx*sp*.25,fz*sp*.25); pitV-=1.6; }      // splash on entry
     if(!inW&&FX.wet){ fxDrops(me.x,me.z,10,4,fx*sp*.2,fz*sp*.2); }                                                                              // climbing back out
     FX.wet=inW; wet+=((inW?1:0)-wet)*Math.min(1,dt*6);
@@ -1002,14 +1008,15 @@ function tick(){
       if(!f.tp||(f.tp.saved&&!f.hold)||f.tp.failed){ f.tp=null; f.hold=0; let best=1e9; for(const p of people){ if(p.m!==f.m||p.saved||p.failed||p.doomed||p.claim&&p.claim!==f&&p.claim.state===1&&p.claim.tp===p) continue; const dd=Math.hypot(p.g.position.x-f.x,p.g.position.z-f.z); if(dd<best){ best=dd; f.tp=p; } } if(f.tp) f.tp.claim=f; }
       if(f.tp){ if(f.ax==null||f.at!==f.tp){ f.at=f.tp; const ux=f.x-f.tp.g.position.x, uz=f.z-f.tp.g.position.z, ul=Math.hypot(ux,uz)||1; f.ax=ux/ul*2.3; f.az=uz/ul*2.3; }      // set down just beside the person, on the side it came from
         const dx=f.tp.g.position.x+f.ax-f.x, dz=f.tp.g.position.z+f.az-f.z, d=Math.hypot(dx,dz); sp=Math.min(17,d*2.2+1.5); const st=Math.min(d,sp*dt); if(d>1e-3){ f.x+=dx/d*st; f.z+=dz/d*st; if(d>1.5){ let dh=Math.atan2(dx,dz)-f.h; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); f.h+=dh*Math.min(1,dt*3.5); } }
-        const LAND=.25, ty=LAND+Math.max(0,Math.min(1,(d-1.2)/6))*(HOV-LAND); f.y+=Math.max(-9*dt,Math.min(8*dt,(ty-f.y)*Math.min(1,dt*3)));      // comes all the way down to the water
+        const LAND=Math.max(0,floorAt(f.x,f.z))+.25, ty=LAND+Math.max(0,Math.min(1,(d-1.2)/6))*(HOV-LAND); f.y+=Math.max(-9*dt,Math.min(8*dt,(ty-f.y)*Math.min(1,dt*3)));      // comes all the way down to the water
         if(d<.9&&f.y<LAND+.5){ f.hold+=dt; if(f.hold>.45&&!f.tp.saved){ f.tp.saved=true; f.tp.board=true; } if(f.hold>.95){ f.tp=null; f.hold=0; f.ax=null; } } else if(!f.tp.saved) f.hold=0;
         if(f.y<12&&Math.random()<dt*2.2&&floorAt(f.x,f.z)<0) fxPuff(f.x+(Math.random()-.5)*5,f.z+(Math.random()-.5)*5,(Math.random()-.5)*5,(Math.random()-.5)*5,Math.random()*6,1,1,2.6,.22);     // rotor wash
       } else { f.state=2; f.hold=0; }
     } else { f.hold+=dt; const up=Math.min(1,f.hold/1.2);      // lifts off, then banks away over the far side and leaves the screen
       f.y+=dt*(4+up*9); sp=up*up*(8+f.y*.55); let dh=Math.atan2(-Lv.x+D.x*(i%2?.9:-.5),-Lv.z+D.z*(i%2?.9:-.5))-f.h; dh=Math.atan2(Math.sin(dh),Math.cos(dh)); f.h+=dh*Math.min(1,dt*1.8);
       f.x+=Math.sin(f.h)*sp*dt; f.z+=Math.cos(f.h)*sp*dt; if(f.y>60){ f.state=0; f.c.visible=false; return; } }
-    f.c.position.set(f.x,f.y+Math.sin(t*2.3+i)*.18,f.z); f.c.rotation.order="YXZ"; f.c.rotation.set(Math.min(.22,sp*.013),f.h,Math.sin(t*1.7+i)*.03);
+    { const gf=Math.max(0,floorAt(f.x,f.z))+.22; if(f.y<gf) f.y=gf; }      // never below the water or the ground under it
+    f.c.position.set(f.x,f.y+(f.y>1.5?Math.sin(t*2.3+i)*.18:0),f.z); f.c.rotation.order="YXZ"; f.c.rotation.set(Math.min(.22,sp*.013),f.h,Math.sin(t*1.7+i)*.03);
     if(f.rotor) f.rotor.rotation.y+=dt*26; if(f.tail) f.tail.rotation.x+=dt*40; if(f.blink) f.blink.material.opacity=Math.floor(t*3+i)%2?.95:.15;
     f.rope.visible=false;
   });
