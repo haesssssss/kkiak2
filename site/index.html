@@ -335,7 +335,10 @@ const HU=3;                                   // road length: 1 hour of "time un
 const AUG=7, DECM=11;
 const A0=24, A1=A0+FOUND[AUG]*HU, I1=A1+9, B0=A0, B1=B0+FOUND[DECM]*HU, I2=B1+9, END=I2+6, SUMMER=I1+14;   // both calls start from the station: the 12월 road simply runs on, past where 8월 ended
 const ISL=[[I1,9.5],[I2,9.5]];             // pier-head islands: [s, radius]
-const PLZ={hs:22,hl:13};                      // free-roam rectangle of the city plaza (half extents in s and l)
+const PLZ={hs:22,hl:13};
+// the city sits on an island: rounded green shore lobes round the back and sides of the paved rectangle, so nothing hangs over open water
+const LOBES=[[30,-37,9],[32,-27,8.5],[30,-18,6.5],[19,-42,9],[6,-43,9.5],[-8,-43,9],[-21,-42,9.5],[-31,-34,8.5],[-32,-23,7.5],[-31,-12,6.5],[-31,-1,6.5],[-30,10,6]];
+const lobeAt=(s,l)=>{ for(const b of LOBES){ if(Math.hypot(s-b[0],l-b[1])<b[2]-.3) return true; } return false; };                      // free-roam rectangle of the city plaza (half extents in s and l)
 const GY=.55;
 const _d=new THREE.Object3D(), _c=new THREE.Color();
 
@@ -438,6 +441,8 @@ for(const [s,r] of ISL){
 }
 // the city: a paved plaza you can roam, the station, and a skyline with lit windows behind it
 { const S0=-27, S1=PLZ.hs+2, L0=-40, L1=PLZ.hl+2.5, gw=S1-S0, gd=L1-L0;
+  { const lobeMat=toon(0x8fca74), rimMat=toon(0xb9b3dc); for(const [s,l,r] of LOBES){ const p=W(s,l), m=new THREE.Mesh(new THREE.CylinderGeometry(r,r+1.1,1.1,13),lobeMat); m.position.set(p[0],-.004,p[1]); m.rotation.y=s*.7+l; m.receiveShadow=true; scene.add(m);
+      const rim=new THREE.Mesh(new THREE.CylinderGeometry(r+1.15,r+1.7,.5,13),rimMat); rim.position.set(p[0],-.2,p[1]); rim.rotation.y=m.rotation.y; scene.add(rim); shoreList.push([p[0],p[1],r+1.75]); } }
   const ground=new THREE.Mesh(new THREE.BoxGeometry(gw,1.6,gd),landMat); place(ground,(S0+S1)/2,(L0+L1)/2,-.25); ground.receiveShadow=true; scene.add(ground);
   // the forecourt is painted, not tiled: brick paving in a few tones, an asphalt drive from the station doors to the road,
   // lane paint, a hatched keep-clear box at the doors, a big 119, arrows, a crossing, and ambulance bays along the near side
@@ -541,7 +546,7 @@ const roadA=buildRoad(A0,A1,2), roadB=buildRoad(B0,B1,4);
 
 // islets with pines and grass beside the route — dense in summer, thinning out toward winter
 { const isleMat=toon(0x86c26a), rockMat=toon(0xa9a6c8), pineG=new THREE.ConeGeometry(1.25,1.5,6), trunkG=new THREE.CylinderGeometry(.18,.24,1,5), pineMat=toon(0x4fa85a), trunkMat=toon(0x8a5a3c), snowMat=toon(0xe6e9ff);
-  for(let s=A0+10;s<END+30;s+= (s<SUMMER?13:34)+Math.random()*8){ const winter=s>SUMMER; for(const side of [-1,1]){ if(Math.random()<(winter?.45:.12)) continue;
+  for(let s=A0+10;s<END+30;s+= (s<SUMMER?13:34)+Math.random()*8){ const winter=s>SUMMER; for(const side of [-1,1]){ if(side<0&&s<50) continue; if(Math.random()<(winter?.45:.12)) continue;
     const l=side*(side<0?17+Math.random()*26:11+Math.random()*12), rad=2.6+Math.random()*2, p=W(s+Math.random()*6,l), x=p[0], z=p[1];
     const isle=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad+1,1.1,9),winter?snowMat:isleMat); isle.position.set(x,0,z); isle.rotation.y=Math.random()*3; isle.receiveShadow=true; scene.add(isle);
     shoreList.push([x,z,rad+1.05]); CIRC.push([x,z,rad+.7]); const built=Math.random()<(winter?.3:.38); if(built){ const t="ABCH"[(Math.random()*4)|0], sc=Math.min(.3,1.25*rad/BLD[t].w); const q=SL(x,z); bSlots.push({type:t,s:q[0],l:q[1],y:.55,sc,ry:(Math.random()-.5)*.5}); }
@@ -766,7 +771,7 @@ function fxStep(dt){ for(const p of FX.puffs){ if(!p.m.visible) continue; p.t+=d
   for(const d of FX.drops){ if(!d.m.visible) continue; d.t+=dt; d.vy-=22*dt; d.m.position.x+=d.vx*dt; d.m.position.y+=d.vy*dt; d.m.position.z+=d.vz*dt; if(d.m.position.y<-.1){ d.m.visible=false; } } }
 /* ---------- letters are loose objects: hit one with the car and it flies, tumbles, bounces, and ends up bobbing in the water ---------- */
 const roadOn=(rd,s)=>rd.up||rd.t0>=0&&(clock.elapsedTime-rd.t0-Math.max(0,Math.floor((s-rd.s0)/rd.cl))*.085)>.7;
-function floorAt(x,z){ const [s,l]=SL(x,z); if(Math.abs(s)<=PLZ.hs+2&&l>=-40&&l<=PLZ.hl+2.5) return GY; if(Math.abs(l)<3.2&&s>0&&(s<I1&&roadOn(roadA,s)||s<I2&&roadOn(roadB,s))) return GY; for(const [c,r] of ISL){ if(Math.hypot(s-c,l)<r) return GY; } return -.25; }
+function floorAt(x,z){ const [s,l]=SL(x,z); if(lobeAt(s,l)) return GY; if(Math.abs(s)<=PLZ.hs+2&&l>=-40&&l<=PLZ.hl+2.5) return GY; if(Math.abs(l)<3.2&&s>0&&(s<I1&&roadOn(roadA,s)||s<I2&&roadOn(roadB,s))) return GY; for(const [c,r] of ISL){ if(Math.hypot(s-c,l)<r) return GY; } return -.25; }
 function knock(L,ix,iz,pow){ if(!L.loose){ L.loose=true; scene.attach(L.m); } const a=Math.random()*6.283, il=Math.hypot(ix,iz)||1, w=Math.min(9,2.5+pow*.5); L.vx=ix*pow*1.2+Math.cos(a)*.8; L.vz=iz*pow*1.2+Math.sin(a)*.8; L.vy=2.2+Math.random()*1.6+pow*.2; L.wx=iz/il*w+(Math.random()-.5)*2; L.wz=-ix/il*w+(Math.random()-.5)*2; L.wy=(Math.random()-.5)*3; L.rest=0; }   // thrown the way it was hit, tumbling over that way, on a low arc
 function lettersStep(dt,t){ const fx=Math.sin(me.h), fz=Math.cos(me.h), dir=Math.sign(me.v)||1, nx=me.x+fx*2.7*dir, nz=me.z+fz*2.7*dir, sp=Math.abs(me.v);
   for(const L of LETTERS){ if(!L.grp.visible&&!L.loose) continue;
@@ -983,7 +988,7 @@ function tick(){
     moved+=Math.hypot(me.x-px,me.z-pz);
   }
   const [ms,ml]=SL(me.x,me.z);
-  { let gy=-.42; if(Math.abs(ms)<=PLZ.hs+2&&ml>=-PLZ.hl-1&&ml<=PLZ.hl+2.5) gy=GY; else if(Math.abs(ml)<4.05&&ms>0&&(ms<I1+2&&roadOn(roadA,ms)||ms<I2+2&&roadOn(roadB,ms))) gy=GY; else for(const [c,r] of ISL){ if(Math.hypot(ms-c,ml)<r){ gy=GY; break; } } const inW=gy<0, sp=Math.abs(me.v), fx=Math.sin(me.h), fz=Math.cos(me.h);
+  { let gy=-.42; if(Math.abs(ms)<=PLZ.hs+2&&ml>=-PLZ.hl-1&&ml<=PLZ.hl+2.5||lobeAt(ms,ml)) gy=GY; else if(Math.abs(ml)<4.05&&ms>0&&(ms<I1+2&&roadOn(roadA,ms)||ms<I2+2&&roadOn(roadB,ms))) gy=GY; else for(const [c,r] of ISL){ if(Math.hypot(ms-c,ml)<r){ gy=GY; break; } } const inW=gy<0, sp=Math.abs(me.v), fx=Math.sin(me.h), fz=Math.cos(me.h);
     if(inW&&!FX.wet&&(phase>0)){ fxRing(me.x+fx*1.5,me.z+fz*1.5,1.4,5.5,.9,.55); for(let i=0;i<10;i++){ const a=i/10*6.283; fxPuff(me.x+Math.cos(a)*1.8,me.z+Math.sin(a)*1.8,Math.cos(a)*4,Math.sin(a)*4,Math.atan2(Math.cos(a),Math.sin(a)),1.1,1.2,2.8,.6); } fxDrops(me.x+fx*2,me.z+fz*2,22,5+sp*.25,fx*sp*.25,fz*sp*.25); pitV-=1.6; }      // splash on entry
     if(!inW&&FX.wet){ fxDrops(me.x,me.z,10,4,fx*sp*.2,fz*sp*.2); }                                                                              // climbing back out
     FX.wet=inW; wet+=((inW?1:0)-wet)*Math.min(1,dt*6);
