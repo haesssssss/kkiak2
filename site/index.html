@@ -341,6 +341,7 @@ const _d=new THREE.Object3D(), _c=new THREE.Color();
 
 // reveal circle: a world-space cylinder around the car. Everything outside it is cut away (not just darkened), the cut edge glows,
 // and a dark grid floor shows where the world has not appeared yet. Radius 1e6 = off.
+const LIT=[]; let litterIM=null;      // the loose leaves on the forecourt: the car blows them about
 const REV0=12, revU={ uRevC:{value:new THREE.Vector2(0,0)}, uRevR:{value:0} };
 THREE.Material.prototype.onBeforeCompile=function(sh){
   if(sh.vertexShader.indexOf("#include <begin_vertex>")<0||sh.vertexShader.indexOf("#include <project_vertex>")<0||sh.fragmentShader.indexOf("void main() {")<0) return;
@@ -484,7 +485,7 @@ for(const [s,r] of ISL){
   [[-19,-14.6,1.25,0],[-7.5,-15.2,1.05,1],[4.5,-14.4,1.3,3],[14.5,-15,1.1,0],[21.5,-13.8,.95,2],[-24,-6,1.1,1],[-24.3,6.5,1.2,0]].forEach(a=>{ const p=W(a[0],a[1]); leafTree(p[0],GY,p[1],a[2],a[3]); });
   { const slat=toon(0xe8a05a), frame=toon(0x4a4fb8); for(const [s,l] of [[-13.5,-12.3],[9.5,-12.3],[-1.5,-12.3]]){ const b=new THREE.Group(); for(let i=0;i<3;i++){ const sl=new THREE.Mesh(new THREE.BoxGeometry(2.6,.09,.24),slat); sl.position.set(0,.62,-.28+i*.28); b.add(sl); } for(let i=0;i<2;i++){ const bk=new THREE.Mesh(new THREE.BoxGeometry(2.6,.24,.08),slat); bk.position.set(0,.95+i*.32,-.46); b.add(bk); }
       for(const sx of [-1.15,1.15]){ const lg=new THREE.Mesh(new THREE.BoxGeometry(.14,1.3,.14),frame); lg.position.set(sx,.65,-.46); const l2=new THREE.Mesh(new THREE.BoxGeometry(.14,.6,.14),frame); l2.position.set(sx,.3,.26); b.add(lg,l2); } b.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); place(b,s,l,GY); scene.add(b); } }
-  { const N=150, lg=new THREE.PlaneGeometry(.34,.34); lg.rotateX(-Math.PI/2); const im=new THREE.InstancedMesh(lg,new THREE.MeshBasicMaterial({color:0xffffff}),N); for(let i=0;i<N;i++){ const p=W((Math.random()*2-1)*(PLZ.hs+2),-PLZ.hl+1+Math.pow(Math.random(),1.6)*(PLZ.hl*2-1)); _d.position.set(p[0],GY+.045+i*.0002,p[1]); _d.rotation.set(0,Math.random()*6.28,0); const s=.6+Math.random()*.9; _d.scale.set(s,1,s); _d.updateMatrix(); im.setMatrixAt(i,_d.matrix); const P=LEAFPAL[(Math.random()*4)|0]; _c.set(P[(Math.random()*3)|0]).multiplyScalar(.9); im.setColorAt(i,_c); } _d.rotation.set(0,0,0); _d.scale.set(1,1,1); im.frustumCulled=false; scene.add(im); }
+  { const N=150, lg=new THREE.PlaneGeometry(.34,.34); lg.rotateX(-Math.PI/2); const im=new THREE.InstancedMesh(lg,new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}),N); for(let i=0;i<N;i++){ const p=W((Math.random()*2-1)*(PLZ.hs+2),-PLZ.hl+1+Math.pow(Math.random(),1.6)*(PLZ.hl*2-1)); _d.position.set(p[0],GY+.045+i*.0002,p[1]); _d.rotation.set(0,Math.random()*6.28,0); const s=.6+Math.random()*.9; _d.scale.set(s,1,s); _d.updateMatrix(); im.setMatrixAt(i,_d.matrix); LIT.push({x:p[0],y:_d.position.y,z:p[1],x0:p[0],y0:_d.position.y,z0:p[1],ry:_d.rotation.y,rx:0,rz:0,s,vx:0,vy:0,vz:0,wx:0,wz:0,wy:0,air:false,i}); const P=LEAFPAL[(Math.random()*4)|0]; _c.set(P[(Math.random()*3)|0]).multiplyScalar(.9); im.setColorAt(i,_c); } _d.rotation.set(0,0,0); _d.scale.set(1,1,1); im.frustumCulled=false; scene.add(im); litterIM=im; }
   for(const [s,l] of [[-20,11.5],[-6,12],[8,12],[20,11.5],[19,-11.5],[3,-12],[-21,-3]]){ const p=W(s,l); lantern(scene,p[0],GY,p[1]); }
 }
 // station (replaced by the real model once it loads)
@@ -785,6 +786,21 @@ function lettersStep(dt,t){ const fx=Math.sin(me.h), fz=Math.cos(me.h), dir=Math
       m.rotation.x+=(tx-m.rotation.x)*g; m.rotation.y+=(ty-m.rotation.y)*g; if(water) m.position.y+=Math.sin(t*2+L.hx)*.012; }
     // a flying letter takes the standing ones it hits with it
     { const sv=Math.hypot(L.vx,L.vz); if(sv>5) for(const O of LETTERS){ if(O===L||O.loose||!O.grp.visible||!O.wp) continue; const dx=O.wp[0]-m.position.x, dz=O.wp[1]-m.position.z, dd=Math.hypot(dx,dz); if(dd<(L.size+O.size)*.3&&m.position.y<O.size*1.1){ knock(O,(dx/(dd||1))*.5+L.vx/sv*.5,(dz/(dd||1))*.5+L.vz/sv*.5,sv*.55); L.vx*=.5; L.vz*=.5; } } } } }
+// leaves on the ground: the car's wake lifts the ones it passes and throws them along and aside; they flutter down and settle
+const _ld=new THREE.Object3D();
+function litterStep(dt,t){ if(!litterIM) return; const sp=Math.abs(me.v), fx=Math.sin(me.h), fz=Math.cos(me.h), dir=Math.sign(me.v)||1; let dirty=false;
+  for(const q of LIT){ const dx=q.x-me.x, dz=q.z-me.z, d=Math.hypot(dx,dz);
+    if(sp>3&&d<3.4&&q.y<q.y0+1.2){ const k=(1-d/3.4)*Math.min(1,sp/14), side=(dx*fz-dz*fx)>0?1:-1, r=Math.random;      // close enough to be caught in the wake
+      q.vx+=(fx*dir*sp*.55+fz*side*sp*.35+dx/(d||1)*3)*k*dt*9; q.vz+=(fz*dir*sp*.55-fx*side*sp*.35+dz/(d||1)*3)*k*dt*9; q.vy+=(3+sp*.32)*k*dt*9*(.5+r()); if(!q.air){ q.air=true; q.wx=(r()-.5)*16; q.wz=(r()-.5)*16; q.wy=(r()-.5)*8; } }
+    if(!q.air) continue; dirty=true;
+    q.vy-=9.5*dt; const dr=Math.pow(.25,dt); q.vx*=dr; q.vz*=dr; if(q.vy<-2.2) q.vy=-2.2;      // light: falls slowly
+    q.vx+=Math.sin(t*5+q.x0)*1.6*dt; q.vz+=Math.cos(t*4.3+q.z0)*1.6*dt;                        // and sways on the way down
+    q.x+=q.vx*dt; q.y+=q.vy*dt; q.z+=q.vz*dt; q.rx+=q.wx*dt; q.rz+=q.wz*dt; q.ry+=q.wy*dt;
+    const fl=floorAt(q.x,q.z), lvl=(fl<0?.03:fl+.045)+(q.y0-GY-.045);
+    if(q.y<=lvl&&q.vy<=0){ q.y=lvl; q.vy=0; q.rx=0; q.rz=0; if(Math.hypot(q.vx,q.vz)<.5){ q.air=false; q.vx=q.vz=0; } else { q.vx*=Math.pow(.02,dt); q.vz*=Math.pow(.02,dt); } }
+    _ld.position.set(q.x,q.y,q.z); _ld.rotation.set(q.rx,q.ry,q.rz); _ld.scale.set(q.s,1,q.s); _ld.updateMatrix(); litterIM.setMatrixAt(q.i,_ld.matrix); }
+  if(dirty) litterIM.instanceMatrix.needsUpdate=true; }
+function litterReset(){ if(!litterIM) return; LIT.forEach((q,i)=>{ q.x=q.x0; q.y=q.y0; q.z=q.z0; q.rx=q.rz=0; q.vx=q.vy=q.vz=0; q.air=false; _ld.position.set(q.x,q.y,q.z); _ld.rotation.set(0,q.ry,0); _ld.scale.set(q.s,1,q.s); _ld.updateMatrix(); litterIM.setMatrixAt(i,_ld.matrix); }); litterIM.instanceMatrix.needsUpdate=true; }
 function lettersReset(){ for(const L of LETTERS){ if(!L.loose) continue; L.loose=false; L.par.add(L.m); L.m.position.set(L.hx,0,0); L.m.rotation.set(0,0,0); L.m.scale.set(1,1,1); L.vx=L.vy=L.vz=0; } }
 // the street lamps actually light things: three warm point lights hop to whichever lamps are nearest the car
 const lampL=[0,1,2].map(()=>{ const L=new THREE.PointLight(0xffb060,0,17,1.4); L.position.set(0,-50,0); scene.add(L); return L; }); let lampTick=0;
@@ -928,7 +944,7 @@ function failOne(){ let best=null, bd=-1; for(const p of people){ if(p.m!==DECM|
   toast("구조 실패 · "+fails+"명째"); }
 // start over from the very beginning: the empty grid, the circle, the car
 function restart(){ if(!ready) return; const go=()=>{
-    lettersReset(); failsA=0; fails=0; people.forEach(p=>{ p.saved=false; p.board=false; p.failed=false; p.sink=0; p.splash=0; p.doomed=false; p.due=0; p.claim=null; p.g.visible=true; p.g.scale.setScalar(.72); p.g.position.y=0; p.g.userData.body.forEach(o=>o.visible=true); p.g.userData.ring.material=ringMat; });
+    lettersReset(); litterReset(); failsA=0; fails=0; people.forEach(p=>{ p.saved=false; p.board=false; p.failed=false; p.sink=0; p.splash=0; p.doomed=false; p.due=0; p.claim=null; p.g.visible=true; p.g.scale.setScalar(.72); p.g.position.y=0; p.g.userData.body.forEach(o=>o.visible=true); p.g.userData.ring.material=ringMat; });
     me.x=0; me.z=0; me.h=H0; me.v=0; seasonK=0; setSeason(0); fleet.forEach(f=>{ f.state=0; f.c.visible=false; }); sinkRoad(roadA); sinkRoad(roadB); chevs.forEach(g=>g.visible=false); beacon.visible=false;
     banner(null); $("#alert").classList.remove("on"); $("#quest").classList.remove("on"); $("#arrow").hidden=true; document.body.classList.remove("live");
     phase=0; tPhase=0; moved=0; tick.t0=0; tick.hold=0; running=false; revHold=false; revOn=true; revT=0; popT=0; revU.uRevR.value=0; grid.visible=ring.visible=true; setArc(1); scene.background.copy(DARK); glows.forEach(g=>g.visible=true);
@@ -976,7 +992,7 @@ function tick(){
       fxPuff(bx+(Math.random()-.5)*.8,bz+(Math.random()-.5)*.8, -fx*dir*.6,-fz*dir*.6, me.h+(Math.random()-.5)*.5, .8+k*.5, 1.5, 2.6, .26+k*.16);                        // churned water straight behind
       if(sp>7){ const hx=me.x+fx*3.3*dir, hz=me.z+fz*3.3*dir; for(const sd of [-1,1]) fxPuff(hx+rx*sd*.9,hz+rz*sd*.9, rx*sd*2.6+fx*dir*sp*.18, rz*sd*2.6+fz*dir*sp*.18, me.h+sd*.9*dir, .55, .7, 1.5, .5); if(Math.random()<.5) fxDrops(hx,hz,1,2.4+sp*.1,fx*sp*.3*dir,fz*sp*.3*dir); } }   // bow wave
     baseY+=(gy+(inW?Math.sin(t*2.4)*.035:0)-baseY)*Math.min(1,dt*7); }
-  fxStep(dt); if(ready){ lampLights(dt); windStep(dt); if(phase>0) lettersStep(dt,t); }
+  fxStep(dt); if(ready){ lampLights(dt); windStep(dt); if(phase>0) lettersStep(dt,t); litterStep(dt,t); }
   hopV-=38*dt; hop+=hopV*dt; if(hop<0){ hop=0; hopV=hopV<-7?-hopV*.2:0; }
   wobV+=(-90*wob-13*wobV)*dt; wob+=wobV*dt; pitV+=(-90*pit-13*pitV)*dt; pit+=pitV*dt;
   steerVis+=(steerIn-steerVis)*Math.min(1,dt*9); spin+=me.v*dt/.435; const lean=steerVis*Math.min(1,Math.abs(me.v)/18)*.075;
