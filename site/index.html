@@ -336,9 +336,9 @@ const AUG=7, DECM=11;
 const A0=24, A1=A0+FOUND[AUG]*HU, I1=A1+9, B0=A0, B1=B0+FOUND[DECM]*HU, I2=B1+9, END=I2+6, SUMMER=I1+14;   // both calls start from the station: the 12월 road simply runs on, past where 8월 ended
 const ISL=[[I1,9.5],[I2,9.5]];             // pier-head islands: [s, radius]
 const PLZ={hs:22,hl:13};
-// the city sits on an island: rounded green shore lobes round the back and sides of the paved rectangle, so nothing hangs over open water
-const LOBES=[[30,-37,9],[32,-27,8.5],[30,-18,6.5],[19,-42,9],[6,-43,9.5],[-8,-43,9],[-21,-42,9.5],[-31,-34,8.5],[-32,-23,7.5],[-31,-12,6.5],[-31,-1,6.5],[-30,10,6]];
-const lobeAt=(s,l)=>{ for(const b of LOBES){ if(Math.hypot(s-b[0],l-b[1])<b[2]-.3) return true; } return false; };                      // free-roam rectangle of the city plaza (half extents in s and l)
+// the paved city block has a ragged, uneven edge round its back and sides (the near side and the road exit stay straight)
+const CITY=[[24.5,15.7],[24.5,-11.5],[26.72,-12.56],[28.8,-13.9],[30.08,-15.53],[32.37,-17.31],[33.65,-19.68],[34.89,-22.02],[36.27,-24.52],[35.99,-27.34],[36.18,-29.94],[35.64,-32.6],[36.5,-35.52],[35.19,-38.15],[34.14,-40.79],[31.36,-42.1],[29.91,-44.03],[27.61,-45.56],[24.76,-44.32],[22.39,-45.43],[19.98,-46.31],[17.58,-46.41],[15.24,-47.33],[12.9,-48.31],[10.4,-47.26],[7.91,-48.6],[5.57,-47.69],[3.15,-47.74],[0.75,-47.49],[-1.61,-46.79],[-3.99,-46.57],[-6.47,-45.85],[-8.8,-46.88],[-11.23,-46.75],[-13.6,-47.3],[-15.92,-47.1],[-18.51,-47.05],[-21.11,-47.04],[-23.38,-45.39],[-25.56,-45.06],[-27.02,-43.27],[-29.07,-42.07],[-31.2,-40.95],[-33.17,-39.11],[-33.14,-36.79],[-34.31,-34.68],[-33.3,-32.2],[-34.12,-29.98],[-32.77,-27.63],[-33.39,-24.98],[-31.74,-22.67],[-31.64,-19.91],[-33.37,-17.56],[-33.72,-15.07],[-32.74,-12.45],[-33.54,-9.99],[-31.94,-7.68],[-32.88,-4.98],[-33.43,-2.34],[-31.68,0.04],[-31.99,2.71],[-33.24,5.26],[-33.45,8.25],[-31.87,10.95],[-29.28,12.59],[-27.2,15.7]];
+const lobeAt=(s,l)=>{ let c=false; for(let i=0,j=CITY.length-1;i<CITY.length;j=i++){ const a=CITY[i], b=CITY[j]; if((a[1]>l)!==(b[1]>l)&&s<(b[0]-a[0])*(l-a[1])/(b[1]-a[1])+a[0]) c=!c; } return c; };
 const GY=.55;
 const _d=new THREE.Object3D(), _c=new THREE.Color();
 
@@ -441,8 +441,8 @@ for(const [s,r] of ISL){
 }
 // the city: a paved plaza you can roam, the station, and a skyline with lit windows behind it
 { const S0=-27, S1=PLZ.hs+2, L0=-40, L1=PLZ.hl+2.5, gw=S1-S0, gd=L1-L0;
-  { const lobeMat=toon(0x8fca74), rimMat=toon(0xb9b3dc); for(const [s,l,r] of LOBES){ const p=W(s,l), m=new THREE.Mesh(new THREE.CylinderGeometry(r,r+1.1,1.1,13),lobeMat); m.position.set(p[0],-.004,p[1]); m.rotation.y=s*.7+l; m.receiveShadow=true; scene.add(m);
-      const rim=new THREE.Mesh(new THREE.CylinderGeometry(r+1.15,r+1.7,.5,13),rimMat); rim.position.set(p[0],-.2,p[1]); rim.rotation.y=m.rotation.y; scene.add(rim); shoreList.push([p[0],p[1],r+1.75]); } }
+  { const sh=new THREE.Shape(); CITY.forEach((p,i)=>i?sh.lineTo(p[0],p[1]):sh.moveTo(p[0],p[1])); const eg=new THREE.ExtrudeGeometry(sh,{depth:1.6,bevelEnabled:false}); eg.rotateX(Math.PI/2);
+    const slab=new THREE.Mesh(eg,toon(0xd6cdf0)); const sg=new THREE.Group(); sg.add(slab); place(sg,0,0,GY-.012); slab.receiveShadow=true; scene.add(sg); }
   const ground=new THREE.Mesh(new THREE.BoxGeometry(gw,1.6,gd),landMat); place(ground,(S0+S1)/2,(L0+L1)/2,-.25); ground.receiveShadow=true; scene.add(ground);
   // the forecourt is painted, not tiled: brick paving in a few tones, an asphalt drive from the station doors to the road,
   // lane paint, a hatched keep-clear box at the doors, a big 119, arrows, a crossing, and ambulance bays along the near side
